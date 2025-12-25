@@ -8,7 +8,7 @@ output "vpc_cidr_block" {
   description = "CIDR block da VPC"
   value       = module.vpc.vpc_cidr_block
 }
-
+/*
 # Outputs das Subnets
 output "public_subnet_id" {
   description = "ID da subnet pública"
@@ -62,3 +62,4 @@ output "availability_zones" {
   description = "Availability zones utilizadas"
   value       = module.subnets.availability_zones
 }
+*/

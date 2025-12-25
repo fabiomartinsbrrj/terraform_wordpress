@@ -34,21 +34,26 @@ locals {
 module "vpc" {
   source = "./modules/vpc"
 
-  vpc_cidr     = var.vpc_cidr
+  vpc_cidr             = var.vpc_cidr
+  vpc_additional_cidrs = var.vpc_additional_cidrs
+  project_name         = var.project_name
+  common_tags          = local.common_tags
+}
+
+
+# Módulo Subnets
+module "public_subnets" {
+  source = "./modules/subnets"
+
+  vpc_id                              = module.vpc.vpc_id
+  vpc_additional_cidr_association_ids = module.vpc.vpc_additional_cidr_association_ids
+  public_subnets                      = var.public_subnets
+  /*private_subnet_cidrs = var.private_subnet_cidrs*/
   project_name = var.project_name
   common_tags  = local.common_tags
 }
 
-# Módulo Subnets
-module "subnets" {
-  source = "./modules/subnets"
-
-  vpc_id               = module.vpc.vpc_id
-  public_subnet_cidr   = var.public_subnet_cidr
-  private_subnet_cidrs = var.private_subnet_cidrs
-  project_name         = var.project_name
-  common_tags          = local.common_tags
-}
+/*
 
 # Módulo Gateways
 module "gateways" {
@@ -72,3 +77,4 @@ module "routing" {
   project_name        = var.project_name
   common_tags         = local.common_tags
 }
+*/

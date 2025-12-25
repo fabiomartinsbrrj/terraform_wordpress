@@ -1,7 +1,10 @@
+
 # Data source para obter as AZs disponíveis
+/*
 data "aws_availability_zones" "available" {
   state = "available"
 }
+
 
 # Subnet Pública
 resource "aws_subnet" "public" {
@@ -29,3 +32,4 @@ resource "aws_subnet" "private" {
     Type = "Private"
   })
 }
+*/

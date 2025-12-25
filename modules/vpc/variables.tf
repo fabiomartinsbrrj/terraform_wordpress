@@ -13,3 +13,9 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "vpc_additional_cidrs" {
+  type        = list(string)
+  description = "Lista de CIDRS adicionais da VPC"
+  default     = []
+}

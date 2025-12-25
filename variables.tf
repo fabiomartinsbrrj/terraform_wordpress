@@ -18,6 +18,7 @@ variable "project_name" {
 }
 
 # Variáveis de rede
+/*
 variable "vpc_cidr" {
   description = "CIDR block para a VPC"
   type        = string
@@ -34,4 +35,46 @@ variable "private_subnet_cidrs" {
   description = "Lista de CIDR blocks para as subnets privadas"
   type        = list(string)
   default     = ["10.0.2.0/24", "10.0.3.0/24"]
+}
+*/
+
+variable "vpc_cidr" {
+  type        = string
+  description = "CIDR principal da VPC"
+}
+
+variable "vpc_additional_cidrs" {
+  type        = list(string)
+  description = "Lista de CIDRS adicionais da VPC"
+  default     = []
+}
+
+variable "public_subnets" {
+  description = "Lista de Public Subnets da VPC"
+  type = list(object({
+    name              = string
+    cidr              = string
+    availability_zone = string
+  }))
+}
+
+
+variable "private_subnets" {
+  description = "Lista de Private Subnets da VPC"
+  type = list(object({
+    name              = string
+    cidr              = string
+    availability_zone = string
+  }))
+}
+
+
+variable "database_subnets" {
+  description = "Lista de Databases Subnets da VPC"
+  default     = []
+  type = list(object({
+    name              = string
+    cidr              = string
+    availability_zone = string
+  }))
 }
