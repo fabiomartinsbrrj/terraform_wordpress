@@ -47,7 +47,7 @@ variable "private_subnets" {
   }))
 }
 
-/*
+
 variable "database_subnets" {
   description = "Lista de Databases Subnets da VPC"
   default     = []
@@ -57,4 +57,3 @@ variable "database_subnets" {
     availability_zone = string
   }))
 }
-*/

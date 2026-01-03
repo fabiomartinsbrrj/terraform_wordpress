@@ -164,3 +164,24 @@ output "private_route_table_association_ids" {
   description = "IDs das associações das route tables privadas"
   value       = aws_route_table_association.private[*].id
 }
+
+# Outputs das Database Subnets
+output "database_subnet_ids" {
+  description = "IDs das subnets de banco de dados"
+  value       = aws_subnet.database_subnets[*].id
+}
+
+output "database_subnet_arns" {
+  description = "ARNs das subnets de banco de dados"
+  value       = aws_subnet.database_subnets[*].arn
+}
+
+output "database_subnet_cidrs" {
+  description = "CIDR blocks das subnets de banco de dados"
+  value       = aws_subnet.database_subnets[*].cidr_block
+}
+
+output "database_subnet_availability_zones" {
+  description = "Availability zones das subnets de banco de dados"
+  value       = aws_subnet.database_subnets[*].availability_zone
+}
