@@ -17,21 +17,44 @@ variable "project_name" {
   default     = "wordpress-infra"
 }
 
-# Variáveis de rede
 variable "vpc_cidr" {
-  description = "CIDR block para a VPC"
   type        = string
-  default     = "10.0.0.0/16"
+  description = "CIDR principal da VPC"
 }
 
-variable "public_subnet_cidr" {
-  description = "CIDR block para a subnet pública"
-  type        = string
-  default     = "10.0.1.0/24"
-}
-
-variable "private_subnet_cidrs" {
-  description = "Lista de CIDR blocks para as subnets privadas"
+variable "vpc_additional_cidrs" {
   type        = list(string)
-  default     = ["10.0.2.0/24", "10.0.3.0/24"]
+  description = "Lista de CIDRS adicionais da VPC"
+  default     = []
 }
+
+variable "public_subnets" {
+  description = "Lista de Public Subnets da VPC"
+  type = list(object({
+    name              = string
+    cidr              = string
+    availability_zone = string
+  }))
+}
+
+
+variable "private_subnets" {
+  description = "Lista de Private Subnets da VPC"
+  type = list(object({
+    name              = string
+    cidr              = string
+    availability_zone = string
+  }))
+}
+
+/*
+variable "database_subnets" {
+  description = "Lista de Databases Subnets da VPC"
+  default     = []
+  type = list(object({
+    name              = string
+    cidr              = string
+    availability_zone = string
+  }))
+}
+*/

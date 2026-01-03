@@ -1,69 +1,76 @@
 # Infraestrutura AWS com Terraform - WordPress
 
-Este projeto cria uma infraestrutura básica na AWS usando Terraform, seguindo as melhores práticas de desenvolvimento. A infraestrutura inclui uma VPC com 1 subnet pública e 2 subnets privadas.
+Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPress de forma escalável e segura. A arquitetura utiliza subnets privadas para as instâncias WordPress, com acesso via Session Manager e conectividade à internet através de NAT Gateway.
 
-## 🏗️ Arquitetura
+## 🏗️ Arquitetura Atual
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                    VPC (10.0.0.0/16)                   │
-│                                                         │
-│  ┌─────────────────┐  ┌─────────────────┐              │
-│  │  Subnet Pública │  │  Subnet Privada │              │
-│  │   10.0.1.0/24   │  │   10.0.2.0/24   │              │
-│  │                 │  │                 │              │
-│  │  ┌─────────────┐│  │                 │              │
-│  │  │NAT Gateway  ││  │                 │              │
-│  │  └─────────────┘│  │                 │              │
-│  └─────────────────┘  └─────────────────┘              │
-│           │                     │                      │
-│  ┌─────────────────┐  ┌─────────────────┐              │
-│  │Internet Gateway │  │  Subnet Privada │              │
-│  └─────────────────┘  │   10.0.3.0/24   │              │
-│                       │                 │              │
-│                       └─────────────────┘              │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    VPC (10.0.0.0/16 + 100.64.0.0/16)          │
+│                                                                 │
+│  ┌─────────────────────┐  ┌─────────────────────────────────┐   │
+│  │   Subnet Pública    │  │        Subnet Privada           │   │
+│  │   10.0.48.0/24      │  │       10.0.0.0/20               │   │
+│  │   (us-east-1a)      │  │       (us-east-1a)              │   │
+│  │                     │  │                                 │   │
+│  │  ┌─────────────────┐│  │  ┌─────────────────────────────┐│   │
+│  │  │  NAT Gateway    ││  │  │    Instâncias WordPress     ││   │
+│  │  │  (EIP Público)  ││  │  │    (Session Manager)        ││   │
+│  │  └─────────────────┘│  │  └─────────────────────────────┘│   │
+│  └─────────────────────┘  └─────────────────────────────────┘   │
+│           │                              │                     │
+│  ┌─────────────────────┐                 │                     │
+│  │  Internet Gateway   │←────────────────┘                     │
+│  └─────────────────────┘                                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## 📋 Recursos Criados
+## 📋 Recursos Implementados
 
-- **VPC**: Rede virtual privada com CIDR `10.0.0.0/16`
-- **Subnet Pública**: Para recursos que precisam de acesso direto à internet
-- **2 Subnets Privadas**: Para recursos internos (bancos de dados, aplicações)
-- **Internet Gateway**: Permite acesso à internet para a subnet pública
-- **NAT Gateway**: Permite acesso à internet para as subnets privadas
-- **Route Tables**: Configuração de roteamento para cada tipo de subnet
-- **Elastic IP**: IP fixo para o NAT Gateway
+### ✅ Infraestrutura de Rede (Concluída)
 
-## 📁 Estrutura Modular
+- **VPC**: Rede virtual com CIDRs `10.0.0.0/16` + `100.64.0.0/16`
+- **Subnet Pública**: `10.0.48.0/24` (us-east-1a) - Para ALB e NAT Gateway
+- **Subnet Privada**: `10.0.0.0/20` (us-east-1a) - Para instâncias WordPress
+- **Internet Gateway**: Acesso à internet para subnet pública
+- **NAT Gateway**: Conectividade de saída para subnet privada
+- **Route Tables**: Roteamento configurado para cada tipo de subnet
+- **Elastic IP**: IP público fixo para o NAT Gateway
 
-O projeto segue uma arquitetura modular organizada por responsabilidades:
+### 🔧 Recursos Planejados (Issues GitHub)
+
+- **IAM Role SSM**: Para acesso seguro via Session Manager ([Issue #1](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/1))
+- **EFS**: Sistema de arquivos compartilhado ([Issue #2](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/2))
+- **Security Groups**: Controle de tráfego ([Issue #3](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/3))
+- **RDS MySQL**: Banco de dados WordPress ([Issue #4](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/4))
+- **Launch Template**: Configuração das instâncias ([Issue #5](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/5))
+- **Application Load Balancer**: Distribuição de carga ([Issue #6](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/6))
+- **Auto Scaling Group**: Escalabilidade automática ([Issue #7](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/7))
+
+## 📁 Estrutura do Projeto
+
+O projeto está organizado por responsabilidades em arquivos separados:
 
 ```text
 terraform_wordpress/
-├── main.tf                    # Configuração principal e chamadas dos módulos
+├── vpc.tf                     # VPC principal com DNS habilitado
+├── public_subnets.tf          # Subnet pública e Internet Gateway
+├── private_subnets.tf         # Subnet privada, NAT Gateway e Elastic IP
+├── internet_gateway.tf        # Internet Gateway (referenciado)
 ├── variables.tf               # Variáveis globais do projeto
-├── outputs.tf                 # Outputs principais da infraestrutura
+├── outputs.tf                 # Outputs de todos os recursos
 ├── terraform.tfvars.example   # Exemplo de configuração
 ├── .gitignore                 # Exclusões do Git
-├── README.md                  # Documentação
-└── modules/                   # Módulos organizados por responsabilidade
-    ├── vpc/                   # Módulo da VPC
-    │   ├── main.tf           # Recurso da VPC
-    │   ├── variables.tf      # Variáveis do módulo VPC
-    │   └── outputs.tf        # Outputs da VPC
-    ├── subnets/              # Módulo das Subnets
-    │   ├── main.tf           # Recursos das subnets
-    │   ├── variables.tf      # Variáveis do módulo subnets
-    │   └── outputs.tf        # Outputs das subnets
-    ├── gateways/             # Módulo dos Gateways
-    │   ├── main.tf           # Internet Gateway e NAT Gateway
-    │   ├── variables.tf      # Variáveis do módulo gateways
-    │   └── outputs.tf        # Outputs dos gateways
-    └── routing/              # Módulo de Roteamento
-        ├── main.tf           # Route tables e associações
-        ├── variables.tf      # Variáveis do módulo routing
-        └── outputs.tf        # Outputs das route tables
+├── README.md                  # Esta documentação
+├── GITHUB_ISSUES.md          # Issues planejadas para implementação
+├── environment/              # Configurações por ambiente
+│   └── prod/
+│       ├── backend.tfvars    # Configuração do backend S3
+│       └── terraform.tfvars  # Variáveis do ambiente prod
+└── scripts/                  # Scripts de validação e utilitários
+    └── validation/
+        ├── validate_public_subnets.sh   # Validação de subnets públicas
+        └── validate_private_subnets.sh  # Validação de subnets privadas
 ```
 
 ## 🚀 Pré-requisitos
@@ -122,20 +129,40 @@ Após a aplicação, você verá informações importantes como:
 ## 🔧 Variáveis Disponíveis
 
 | Variável | Descrição | Valor Padrão |
-|----------|-----------|--------------|
+| -------- | --------- | ------------ |
 | `aws_region` | Região AWS | `us-east-1` |
-| `environment` | Ambiente (dev/staging/prod) | `dev` |
-| `project_name` | Nome do projeto | `wordpress-infra` |
-| `vpc_cidr` | CIDR da VPC | `10.0.0.0/16` |
-| `public_subnet_cidr` | CIDR da subnet pública | `10.0.1.0/24` |
-| `private_subnet_cidrs` | CIDRs das subnets privadas | `["10.0.2.0/24", "10.0.3.0/24"]` |
+| `environment` | Ambiente (dev/staging/prod) | `prod` |
+| `project_name` | Nome do projeto | `cloudpro-vpc` |
+| `vpc_cidr` | CIDR principal da VPC | `10.0.0.0/16` |
+| `vpc_secondary_cidr` | CIDR secundário da VPC | `100.64.0.0/16` |
+| `public_subnet_cidr` | CIDR da subnet pública | `10.0.48.0/24` |
+| `private_subnet_cidr` | CIDR da subnet privada | `10.0.0.0/20` |
+| `availability_zone` | Zona de disponibilidade | `us-east-1a` |
 
 ## 📊 Outputs Importantes
 
+### Rede
+
 - `vpc_id`: ID da VPC criada
-- `public_subnet_id`: ID da subnet pública
+- `vpc_cidr_block`: CIDR principal da VPC
+- `vpc_additional_cidr_blocks`: CIDRs secundários da VPC
+- `public_subnet_ids`: IDs das subnets públicas
 - `private_subnet_ids`: IDs das subnets privadas
-- `nat_gateway_public_ip`: IP público do NAT Gateway
+- `internet_gateway_id`: ID do Internet Gateway
+
+### NAT Gateway e Conectividade
+
+- `nat_gateway_ids`: IDs dos NAT Gateways
+- `nat_gateway_public_ips`: IPs públicos dos NAT Gateways
+- `elastic_ip_addresses`: Endereços dos Elastic IPs
+- `elastic_ip_ids`: IDs dos Elastic IPs
+
+### Roteamento
+
+- `public_route_table_id`: ID da route table pública
+- `private_route_table_ids`: IDs das route tables privadas
+- `public_route_table_association_ids`: IDs das associações públicas
+- `private_route_table_association_ids`: IDs das associações privadas
 
 ## 🛡️ Boas Práticas Implementadas
 
@@ -170,16 +197,45 @@ Para remover todos os recursos criados:
 terraform destroy
 ```
 
-## 📝 Próximos Passos
+## � Validação e Testes
 
-Esta infraestrutura base pode ser expandida com:
+O projeto inclui scripts de validação para verificar a infraestrutura:
 
-1. **Security Groups** para controle de tráfego
-2. **Application Load Balancer** para distribuição de carga
-3. **RDS** para banco de dados
-4. **EC2** instances para aplicações
-5. **S3** buckets para armazenamento
-6. **CloudFront** para CDN
+### Scripts Disponíveis
+
+```bash
+# Validar subnets públicas
+./scripts/validation/validate_public_subnets.sh
+
+# Validar subnets privadas  
+./scripts/validation/validate_private_subnets.sh
+```
+
+### Funcionalidades dos Scripts
+
+- ✅ Verificação de recursos AWS (VPC, subnets, gateways)
+- ✅ Teste de conectividade real com instâncias EC2 temporárias
+- ✅ Validação de roteamento e NAT Gateway
+- ✅ Suporte ao Session Manager para acesso seguro
+- ✅ Limpeza automática de recursos de teste
+
+## 📝 Roadmap de Desenvolvimento
+
+### 🚀 Próxima Fase (Issues GitHub)
+
+1. **[Issue #1](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/1)**: IAM Role SSM
+2. **[Issue #2](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/2)**: EFS para arquivos compartilhados
+3. **[Issue #3](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/3)**: Security Groups
+4. **[Issue #4](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/4)**: RDS MySQL
+
+### 🔄 Fases Futuras
+
+- **Launch Template** com WordPress pré-configurado
+- **Application Load Balancer** para alta disponibilidade
+- **Auto Scaling Group** para escalabilidade automática
+- **CloudWatch** para monitoramento
+- **S3** para backups e mídia
+- **CloudFront** para CDN
 
 ## 🤝 Contribuição
 
