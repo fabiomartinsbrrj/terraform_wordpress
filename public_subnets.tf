@@ -1,23 +1,22 @@
 resource "aws_subnet" "public" {
   count = length(var.public_subnets)
 
-  vpc_id = var.vpc_id
+  vpc_id = aws_vpc.main.id
 
   cidr_block        = var.public_subnets[count.index].cidr
   availability_zone = var.public_subnets[count.index].availability_zone
 
-  depends_on = [
-    null_resource.wait_for_additional_cidrs
-  ]
-
-  tags = merge(var.common_tags, {
+  tags = {
     Name = var.public_subnets[count.index].name
-    Type = "Public"
-  })
+  }
+
+  depends_on = [
+    aws_vpc_ipv4_cidr_block_association.main
+  ]
 }
 
 resource "aws_route_table" "public_internet_access" {
-  vpc_id = var.vpc_id
+  vpc_id = aws_vpc.main.id
 
   tags = {
     Name = "${var.project_name}-public-access"
