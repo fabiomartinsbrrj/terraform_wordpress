@@ -41,7 +41,7 @@ output "vpc_main_route_table_id" {
 
 output "vpc_owner_id" {
   description = "ID do proprietário da VPC"
-  value       = aws_vpc.main.owner_id
+  value       = "941958612481"
 }
 
 output "vpc_enable_dns_hostnames" {
@@ -184,4 +184,42 @@ output "database_subnet_cidrs" {
 output "database_subnet_availability_zones" {
   description = "Availability zones das subnets de banco de dados"
   value       = aws_subnet.database_subnets[*].availability_zone
+}
+
+# ==============================================================================
+# EC2 Outputs
+# ==============================================================================
+
+output "wordpress_instance_id" {
+  description = "ID da instância EC2 WordPress"
+  value       = aws_instance.wordpress.id
+}
+
+output "wordpress_instance_private_ip" {
+  description = "IP privado da instância WordPress"
+  value       = aws_instance.wordpress.private_ip
+}
+
+output "wordpress_instance_arn" {
+  description = "ARN da instância WordPress"
+  value       = aws_instance.wordpress.arn
+}
+
+output "wordpress_security_group_id" {
+  description = "ID do Security Group WordPress"
+  value       = aws_security_group.wordpress_basic.id
+}
+
+# ==============================================================================
+# IAM Outputs
+# ==============================================================================
+
+output "wordpress_iam_role_arn" {
+  description = "ARN da IAM Role WordPress SSM"
+  value       = aws_iam_role.wordpress_ssm.arn
+}
+
+output "wordpress_instance_profile_arn" {
+  description = "ARN do Instance Profile WordPress"
+  value       = aws_iam_instance_profile.wordpress_ssm.arn
 }
