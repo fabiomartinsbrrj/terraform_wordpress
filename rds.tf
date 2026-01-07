@@ -1,4 +1,6 @@
 # DB Subnet Group para RDS
+# NOTA: Para destroy seguro, use o script: ./scripts/safe_destroy.sh
+# Isso evita o erro: "Cannot delete the subnet group because at least one database instance is still using it"
 resource "aws_db_subnet_group" "main" {
   name       = "${var.project_name}-db-subnet-group"
   subnet_ids = aws_subnet.database_subnets[*].id
@@ -7,6 +9,12 @@ resource "aws_db_subnet_group" "main" {
     Name        = "${var.project_name} DB subnet group"
     Environment = var.environment
   }
+
+  # Garantir que seja destruído após a instância RDS
+  lifecycle {
+    create_before_destroy = true
+  }
+
 }
 
 # Security Group para RDS MySQL
@@ -83,10 +91,9 @@ resource "aws_db_instance" "wordpress" {
   # Performance Insights (não suportado em db.t3.micro)
   performance_insights_enabled = false
 
-  # Deletion Protection
-  skip_final_snapshot       = false
-  final_snapshot_identifier = "${var.project_name}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
-  deletion_protection       = true
+  # Deletion Protection (desabilitado para facilitar destroy em desenvolvimento)
+  skip_final_snapshot = true
+  deletion_protection = false
 
   tags = {
     Name        = "${var.project_name}-mysql"
@@ -97,7 +104,8 @@ resource "aws_db_instance" "wordpress" {
     aws_db_subnet_group.main,
     aws_security_group.rds,
     aws_ssm_parameter.db_username,
-    aws_ssm_parameter.db_password
+    aws_ssm_parameter.db_password,
+    aws_iam_role.rds_monitoring
   ]
 }
 
