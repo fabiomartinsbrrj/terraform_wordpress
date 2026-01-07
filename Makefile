@@ -2,7 +2,7 @@
 # Autor: Terraform WordPress Project
 # Descrição: Scripts de validação para EC2, RDS, SSM e WordPress
 
-.PHONY: help validate-all validate-ssm validate-rds validate-wordpress validate-logs clean
+.PHONY: help validate-all validate-ssm validate-rds validate-wordpress validate-logs validate-alb clean
 
 # Variáveis
 SCRIPTS_DIR = scripts/validation
@@ -21,12 +21,14 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make validate-rds     # Testa apenas conectividade RDS"
 	@echo ""
 
-validate-all: ## Executa todas as validações (SSM, RDS, WordPress, Logs)
+validate-all: ## Executa todas as validações (SSM, RDS, WordPress, ALB, Logs)
 	@echo "🎯 Executando todas as validações..."
 	@echo ""
 	@$(MAKE) validate-ssm
 	@echo ""
 	@$(MAKE) validate-rds
+	@echo ""
+	@$(MAKE) validate-alb
 	@echo ""
 	@$(MAKE) validate-wordpress
 	@echo ""
@@ -51,6 +53,15 @@ validate-rds: ## Testa conectividade com RDS MySQL (Issue #4)
 	@$(SCRIPTS_DIR)/simple_rds_test.sh
 
 validate-wordpress: validate-logs ## Alias para validate-logs (compatibilidade)
+
+validate-alb: ## Testa conectividade através do ALB (Issue #6)
+	@echo "🔍 Validando Application Load Balancer..."
+	@if [ ! -f $(SCRIPTS_DIR)/validate_alb_access.sh ]; then \
+		echo "❌ Script validate_alb_access.sh não encontrado!"; \
+		exit 1; \
+	fi
+	@chmod +x $(SCRIPTS_DIR)/validate_alb_access.sh
+	@$(SCRIPTS_DIR)/validate_alb_access.sh
 
 validate-logs: ## Verifica logs e status da instância WordPress
 	@echo "🔍 Verificando logs do WordPress..."
@@ -127,6 +138,9 @@ validate-issue-1: validate-ssm ## Valida Issue #1 - IAM Role SSM
 
 validate-issue-4: validate-rds ## Valida Issue #4 - RDS MySQL
 	@echo "✅ Issue #4 - RDS MySQL validada!"
+
+validate-issue-6: validate-alb ## Valida Issue #6 - Application Load Balancer
+	@echo "✅ Issue #6 - Application Load Balancer validada!"
 
 # Informações do projeto
 info: ## Mostra informações do projeto
