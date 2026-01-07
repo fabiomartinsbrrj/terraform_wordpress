@@ -24,22 +24,22 @@ resource "aws_security_group" "wordpress_basic" {
   vpc_id      = aws_vpc.main.id
   description = "Security group basico para instancia WordPress"
 
-  # HTTP apenas da VPC (ALB)
+  # HTTP apenas do ALB
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-    description = "HTTP da VPC"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+    description     = "HTTP do ALB"
   }
 
-  # HTTPS apenas da VPC (ALB)
+  # HTTPS apenas do ALB
   ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-    description = "HTTPS da VPC"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+    description     = "HTTPS do ALB"
   }
 
   # SSH para troubleshooting
