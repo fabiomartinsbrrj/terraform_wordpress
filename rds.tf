@@ -76,9 +76,8 @@ resource "aws_db_instance" "wordpress" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   publicly_accessible    = false
 
-  # Backup Configuration
-  backup_retention_period = 7
-  backup_window           = "03:00-04:00"
+  # Backup Configuration (desabilitado conforme solicitado)
+  backup_retention_period = 0
   maintenance_window      = "sun:04:00-sun:05:00"
 
   # High Availability (desabilitado para usar apenas uma subnet)
