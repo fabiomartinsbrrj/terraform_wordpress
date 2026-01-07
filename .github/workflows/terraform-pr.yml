@@ -53,6 +53,7 @@ jobs:
         TF_VAR_public_subnets: ${{ vars.TF_VAR_PUBLIC_SUBNETS }}
         TF_VAR_private_subnets: ${{ vars.TF_VAR_PRIVATE_SUBNETS }}
         TF_VAR_database_subnets: ${{ vars.TF_VAR_DATABASE_SUBNETS }}
+        TF_VAR_database_password: ${{ secrets.TF_VAR_DATABASE_PASSWORD }}
       run: |
         terraform plan -no-color -out=tfplan
         terraform show -no-color tfplan > plan_output.txt
