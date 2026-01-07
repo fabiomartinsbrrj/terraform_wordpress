@@ -1,8 +1,9 @@
 #!/bin/bash
-db_username=${db_username}
-db_user_password=${db_user_password}
+# Buscar credenciais e endpoint do SSM Parameter Store
+db_username=$(aws ssm get-parameter --name "${ssm_db_username_parameter}" --region ${aws_region} --query 'Parameter.Value' --output text)
+db_user_password=$(aws ssm get-parameter --name "${ssm_db_password_parameter}" --region ${aws_region} --with-decryption --query 'Parameter.Value' --output text)
+db_endpoint=$(aws ssm get-parameter --name "${ssm_db_endpoint_parameter}" --region ${aws_region} --query 'Parameter.Value' --output text)
 db_name=${db_name}
-db_RDS=${db_RDS}
 yum update -y
 yum install -y httpd
 yum install -y mysql
@@ -34,7 +35,7 @@ curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.pha
 chmod +x wp-cli.phar
 mv wp-cli.phar /usr/local/bin/wp
 wp core download --path=/var/www/html --allow-root
-wp config create --dbname=$db_name --dbuser=$db_username --dbpass=$db_user_password --dbhost=$db_RDS --path=/var/www/html --allow-root --extra-php <<PHP
+wp config create --dbname=$db_name --dbuser=$db_username --dbpass=$db_user_password --dbhost=$db_endpoint --path=/var/www/html --allow-root --extra-php <<PHP
 define( 'FS_METHOD', 'direct' );
 define('WP_MEMORY_LIMIT', '128M');
 PHP

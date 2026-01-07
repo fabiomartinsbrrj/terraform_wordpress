@@ -57,3 +57,16 @@ variable "database_subnets" {
     availability_zone = string
   }))
 }
+
+# Variáveis para RDS MySQL
+variable "db_username" {
+  description = "Username para o banco de dados MySQL"
+  type        = string
+  default     = "wpuser"
+}
+
+variable "db_password" {
+  description = "Senha para o banco de dados MySQL"
+  type        = string
+  sensitive   = true
+}

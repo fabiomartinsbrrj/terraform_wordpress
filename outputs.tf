@@ -191,8 +191,40 @@ output "database_subnet_availability_zones" {
 # ==============================================================================
 
 output "wordpress_instance_id" {
-  description = "ID da instância EC2 WordPress"
+  description = "ID da instância EC2 do WordPress"
   value       = aws_instance.wordpress.id
+}
+
+output "rds_endpoint" {
+  description = "Endpoint do banco de dados RDS MySQL"
+  value       = aws_db_instance.wordpress.endpoint
+}
+
+output "rds_port" {
+  description = "Porta do banco de dados RDS MySQL"
+  value       = aws_db_instance.wordpress.port
+}
+
+output "rds_database_name" {
+  description = "Nome do banco de dados"
+  value       = aws_db_instance.wordpress.db_name
+}
+
+output "rds_username" {
+  description = "Username do banco de dados"
+  value       = aws_db_instance.wordpress.username
+  sensitive   = true
+}
+
+# SSM Parameters Outputs
+output "ssm_db_username_parameter" {
+  description = "Nome do SSM Parameter para username do banco"
+  value       = aws_ssm_parameter.db_username.name
+}
+
+output "ssm_db_password_parameter" {
+  description = "Nome do SSM Parameter para password do banco"
+  value       = aws_ssm_parameter.db_password.name
 }
 
 output "wordpress_instance_private_ip" {
