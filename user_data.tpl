@@ -1,6 +1,7 @@
 #!/bin/bash
-db_username=${db_username}
-db_user_password=${db_user_password}
+# Buscar credenciais do SSM Parameter Store
+db_username=$(aws ssm get-parameter --name "${ssm_db_username_parameter}" --region ${aws_region} --query 'Parameter.Value' --output text)
+db_user_password=$(aws ssm get-parameter --name "${ssm_db_password_parameter}" --region ${aws_region} --with-decryption --query 'Parameter.Value' --output text)
 db_name=${db_name}
 db_RDS=${db_RDS}
 yum update -y
