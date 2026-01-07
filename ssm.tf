@@ -21,6 +21,17 @@ resource "aws_ssm_parameter" "db_password" {
   }
 }
 
+resource "aws_ssm_parameter" "db_endpoint" {
+  name  = "/${var.project_name}/rds/endpoint"
+  type  = "String"
+  value = aws_db_instance.wordpress.endpoint
+
+  tags = {
+    Name        = "${var.project_name}-db-endpoint"
+    Environment = var.environment
+  }
+}
+
 # Data sources para ler os SSM Parameters
 data "aws_ssm_parameter" "db_username" {
   name       = aws_ssm_parameter.db_username.name
@@ -31,4 +42,9 @@ data "aws_ssm_parameter" "db_password" {
   name            = aws_ssm_parameter.db_password.name
   with_decryption = true
   depends_on      = [aws_ssm_parameter.db_password]
+}
+
+data "aws_ssm_parameter" "db_endpoint" {
+  name       = aws_ssm_parameter.db_endpoint.name
+  depends_on = [aws_ssm_parameter.db_endpoint]
 }

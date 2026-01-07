@@ -118,8 +118,8 @@ locals {
   user_data = templatefile("${path.module}/user_data.tpl", {
     ssm_db_username_parameter = aws_ssm_parameter.db_username.name
     ssm_db_password_parameter = aws_ssm_parameter.db_password.name
+    ssm_db_endpoint_parameter = aws_ssm_parameter.db_endpoint.name
     aws_region                = var.aws_region
     db_name                   = "wordpress"
-    db_RDS                    = aws_db_instance.wordpress.endpoint
   })
 }
