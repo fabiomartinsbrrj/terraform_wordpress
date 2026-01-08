@@ -1,6 +1,6 @@
 # Infraestrutura AWS com Terraform - WordPress
 
-Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPress de forma escalável e segura. A arquitetura utiliza subnets privadas para as instâncias WordPress, com acesso via Session Manager e conectividade à internet através de NAT Gateway.
+Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPress de forma escalável e segura. A arquitetura utiliza subnets privadas para as instâncias WordPress, com acesso via Session Manager, conectividade à internet através de NAT Gateway e **DNS personalizado via Route 53** para acesso profissional através de `wordpress.fabiodev.com`.
 
 ## 🏗️ Arquitetura Atual
 
@@ -22,7 +22,7 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 │ ┌─────────────────────────────────────────────────────────────┐ │                   │
 │ │              Application Load Balancer                     │ │                   │
 │ │                    (Internet-facing)                       │ │                   │
-│ │          cloudpro-vpc-alb-*.us-east-1.elb.amazonaws.com    │ │                   │
+│ │          wordpress.fabiodev.com (Route 53 DNS)             │ │                   │
 │ └─────────────────────────────────────────────────────────────┘ │                   │
 │           │                        │                           │                   │
 │ ┌─────────────────────┐                                       │                   │
@@ -38,6 +38,14 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 │ │ │   RDS MySQL     │  │   Network ACL   │  │      Multi-AZ Standby       │ │   │
 │ │ │   (t3.micro)    │  │   Restritiva    │  │      (us-east-1b)           │ │   │
 │ │ └─────────────────┘  └─────────────────┘  └─────────────────────────────┘ │   │
+│ │                                                                             │   │
+│ │ ┌─────────────────────────────────────────────────────────────────────┐   │   │
+│ │ │                        Route 53 DNS                                │   │   │
+│ │ │   Hosted Zone: fabiodev.com                                         │   │   │
+│ │ │   A Record: wordpress.fabiodev.com → ALB                            │   │   │
+│ │ │   CNAME: www.wordpress.fabiodev.com                                 │   │   │
+│ │ │   Health Checks: Monitoramento ativo                               │   │   │
+│ │ └─────────────────────────────────────────────────────────────────────┘   │   │
 │ └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -65,6 +73,16 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 - **High Availability**: ALB distribuído em múltiplas AZs
 - **DNS Público**: `cloudpro-vpc-alb-*.us-east-1.elb.amazonaws.com`
 - **Health Checks**: Path `/`, intervalo 30s, timeout 5s
+
+### ✅ Route 53 DNS Personalizado (Concluída) - Issue #15
+
+- **Hosted Zone**: `fabiodev.com` com configuração completa
+- **Registro A (Alias)**: `wordpress.fabiodev.com` → ALB
+- **Registro CNAME**: `www.wordpress.fabiodev.com` → `wordpress.fabiodev.com`
+- **Health Checks**: Monitoramento HTTP ativo para ambos os domínios
+- **DNS Profissional**: Acesso via domínio personalizado
+- **Propagação Global**: DNS funcionando em servidores públicos (Google, Cloudflare, OpenDNS)
+- **Custo**: $0.50/mês (hosted zone) + $1/mês (health checks)
 
 ### ✅ WordPress EC2 (Concluída)
 
@@ -101,6 +119,7 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 - ~~**Application Load Balancer**: Distribuição de carga~~ ✅ **Concluído (Issue #6)**
 - **Auto Scaling Group**: Escalabilidade automática ([Issue #7](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/7))
 - **HTTPS/SSL**: Certificado SSL para ALB ([Issue #13](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/13))
+- ~~**Route 53 DNS**: Domínio personalizado~~ ✅ **Concluído (Issue #15)**
 
 ## 📁 Estrutura do Projeto
 
@@ -117,6 +136,7 @@ terraform_wordpress/
 ├── iam.tf                     # IAM Roles para SSM e RDS monitoring
 ├── rds.tf                     # RDS MySQL com Security Group
 ├── ssm.tf                     # SSM Parameter Store para credenciais
+├── route53.tf                 # Route 53 DNS personalizado (Issue #15)
 ├── user_data.tpl              # Template de instalação WordPress
 ├── variables.tf               # Variáveis globais do projeto
 ├── outputs.tf                 # Outputs de todos os recursos
@@ -127,7 +147,8 @@ terraform_wordpress/
 ├── DESTROY_GUIDE.md           # Guia para destroy seguro do RDS
 ├── docs/                      # Documentação técnica
 │   ├── github-actions-setup.md
-│   └── issue-6-alb-execution-plan.md
+│   ├── issue-6-alb-execution-plan.md
+│   └── aws-architecture-diagram.md  # Diagrama completo da arquitetura
 ├── environment/              # Configurações por ambiente
 │   └── prod/
 │       ├── backend.tfvars    # Configuração do backend S3
@@ -140,6 +161,7 @@ terraform_wordpress/
         ├── validate_database_subnets.sh # Validação de subnets de banco de dados
         ├── validate_ssm_access.sh       # Validação Session Manager
         ├── validate_alb_access.sh       # Validação Application Load Balancer
+        ├── validate_route53_dns.sh      # Validação Route 53 DNS (Issue #15)
         ├── simple_rds_test.sh           # Teste conectividade RDS
         └── check_wordpress_logs.sh      # Verificação logs WordPress
 ```
@@ -211,6 +233,10 @@ Após a aplicação, você verá informações importantes como:
 | `database_subnets` | Lista de subnets de banco de dados | `[{cidr="10.0.51.0/24", name="cloudpro-database-1a", availability_zone="us-east-1a"}]` |
 | `db_username` | Username do banco MySQL | `wpuser` |
 | `db_password` | Senha do banco MySQL | `(obrigatório)` |
+| `root_domain_name` | Domínio raiz para Route 53 | `fabiodev.com` |
+| `wordpress_subdomain` | Subdomínio para WordPress | `wordpress` |
+| `enable_health_checks` | Habilitar health checks Route 53 | `true` |
+| `ttl_default` | TTL padrão para registros DNS | `300` |
 
 ## 📊 Outputs Importantes
 
@@ -256,6 +282,14 @@ Após a aplicação, você verá informações importantes como:
 - `alb_zone_id`: Zone ID do ALB para configuração Route 53
 - `target_group_arn`: ARN do Target Group WordPress
 - `alb_security_group_id`: ID do Security Group do ALB
+
+### Route 53 DNS
+
+- `hosted_zone_id`: ID da hosted zone fabiodev.com
+- `hosted_zone_name_servers`: Name servers da hosted zone
+- `wordpress_domain`: Domínio completo do WordPress (wordpress.fabiodev.com)
+- `wordpress_url`: URL completa do WordPress
+- `route53_health_check_ids`: IDs dos health checks Route 53
 
 ### IAM
 
@@ -368,17 +402,37 @@ Antes de implementar recursos AWS, verifique:
 
 ## 🌐 Acesso ao WordPress
 
-Após a implementação completa, o WordPress estará acessível através do ALB:
+Após a implementação completa, o WordPress estará acessível através de **domínio personalizado**:
 
-**URL de Acesso**: Consulte o output `alb_dns_name` após `terraform apply`
+### **🎯 URL Principal (Route 53)**
+
+**URL Personalizada**: `http://wordpress.fabiodev.com`
 
 ```bash
-# Obter URL do WordPress
+# Obter domínio personalizado
+terraform output wordpress_url
+
+# Exemplo de saída:
+# http://wordpress.fabiodev.com
+```
+
+### **🔄 URL Alternativa (ALB)**
+
+**URL de Backup**: Consulte o output `alb_dns_name` após `terraform apply`
+
+```bash
+# Obter URL do ALB (backup)
 terraform output alb_dns_name
 
 # Exemplo de saída:
 # cloudpro-vpc-alb-58443922.us-east-1.elb.amazonaws.com
 ```
+
+### **🚀 Acesso Múltiplo**
+
+- ✅ **Principal**: `http://wordpress.fabiodev.com`
+- ✅ **WWW**: `http://www.wordpress.fabiodev.com`
+- ✅ **ALB Direto**: `http://cloudpro-vpc-alb-*.us-east-1.elb.amazonaws.com`
 
 **Primeiro Acesso**: O WordPress redirecionará para `/wp-admin/install.php` para configuração inicial.
 
@@ -410,12 +464,14 @@ make validate-all
 make validate-ssm      # Session Manager (Issue #1)
 make validate-rds      # RDS MySQL (Issue #4) 
 make validate-alb      # Application Load Balancer (Issue #6)
+make validate-route53  # Route 53 DNS (Issue #15)
 make validate-wordpress # WordPress logs
 
 # Validações por Issue
 make validate-issue-1  # Issue #1 - IAM Role SSM
 make validate-issue-4  # Issue #4 - RDS MySQL
 make validate-issue-6  # Issue #6 - Application Load Balancer
+make validate-issue-15 # Issue #15 - Route 53 DNS
 
 # Scripts diretos (uso avançado)
 ./scripts/safe_destroy.sh
@@ -424,6 +480,7 @@ make validate-issue-6  # Issue #6 - Application Load Balancer
 ./scripts/validation/validate_database_subnets.sh
 ./scripts/validation/validate_ssm_access.sh
 ./scripts/validation/validate_alb_access.sh
+./scripts/validation/validate_route53_dns.sh
 ./scripts/validation/simple_rds_test.sh
 ./scripts/validation/check_wordpress_logs.sh
 ```
@@ -436,6 +493,7 @@ make validate-issue-6  # Issue #6 - Application Load Balancer
 - ✅ **Segurança**: Validação de Network ACLs e isolamento de banco de dados
 - ✅ **Session Manager**: Suporte ao SSM para acesso seguro
 - ✅ **Load Balancer**: Teste completo do ALB com health checks
+- ✅ **Route 53 DNS**: Validação completa de DNS personalizado
 - ✅ **Database**: Conectividade e performance do RDS MySQL
 - ✅ **WordPress**: Verificação de logs e status da aplicação
 - ✅ **Automação**: Limpeza automática de recursos de teste
@@ -448,6 +506,7 @@ make validate-issue-6  # Issue #6 - Application Load Balancer
 2. **[Issue #3](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/3)**: Security Groups ✅
 3. **[Issue #4](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/4)**: RDS MySQL ✅
 4. **[Issue #6](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/6)**: Application Load Balancer ✅
+5. **[Issue #15](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/15)**: Route 53 DNS Personalizado ✅
 
 ### 🚀 Próximas Issues
 

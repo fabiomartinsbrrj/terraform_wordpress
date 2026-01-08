@@ -59,7 +59,36 @@ resource "aws_route53_record" "wordpress_www" {
 }
 
 # ==============================================================================
-# FASE 3: Health Checks e Monitoramento
+# FASE 3: Automação de Name Servers (Opcional)
+# ==============================================================================
+
+# Recurso para automatizar atualização de name servers do domínio registrado
+# NOTA: Só funciona se o domínio foi registrado via AWS Route 53 Domains
+resource "null_resource" "update_domain_nameservers" {
+  count = var.auto_update_nameservers ? 1 : 0
+
+  depends_on = [aws_route53_zone.main]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Atualizando name servers do domínio ${var.root_domain_name}..."
+      aws route53domains update-domain-nameservers \
+        --domain-name ${var.root_domain_name} \
+        --nameservers ${join(" ", formatlist("Name=%s", aws_route53_zone.main.name_servers))} \
+        --region us-east-1
+      echo "Name servers atualizados com sucesso!"
+    EOT
+  }
+
+  # Trigger para re-executar se name servers mudarem
+  triggers = {
+    name_servers = join(",", aws_route53_zone.main.name_servers)
+    domain_name  = var.root_domain_name
+  }
+}
+
+# ==============================================================================
+# FASE 4: Health Checks e Monitoramento
 # ==============================================================================
 
 # Health Check para monitorar a saúde do WordPress

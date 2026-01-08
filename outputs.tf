@@ -284,3 +284,17 @@ output "alb_security_group_id" {
   description = "ID do Security Group do ALB"
   value       = aws_security_group.alb.id
 }
+
+# ==============================================================================
+# Route 53 DNS Outputs
+# ==============================================================================
+
+output "nameserver_update_command" {
+  description = "Comando AWS CLI para atualizar name servers do domínio registrado"
+  value       = "aws route53domains update-domain-nameservers --domain-name ${var.root_domain_name} --nameservers ${join(" ", formatlist("Name=%s", aws_route53_zone.main.name_servers))} --region us-east-1"
+}
+
+output "nameserver_automation_status" {
+  description = "Status da automação de name servers"
+  value       = var.auto_update_nameservers ? "Habilitada - Name servers serão atualizados automaticamente" : "Desabilitada - Execute o comando 'nameserver_update_command' manualmente"
+}

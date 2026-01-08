@@ -98,3 +98,9 @@ variable "ttl_default" {
   type        = number
   default     = 300
 }
+
+variable "auto_update_nameservers" {
+  description = "Automatizar atualização de name servers do domínio registrado via Terraform"
+  type        = bool
+  default     = false
+}
