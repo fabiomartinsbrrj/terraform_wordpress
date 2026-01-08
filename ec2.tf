@@ -84,34 +84,8 @@ resource "aws_security_group" "wordpress_basic" {
 }
 
 
-# Instância EC2 WordPress básica
-resource "aws_instance" "wordpress" {
-  ami                    = data.aws_ami.amazon_linux.id
-  user_data_base64       = base64encode(local.user_data)
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.private[0].id # Subnet privada (correto)
-  vpc_security_group_ids = [aws_security_group.wordpress_basic.id]
-  iam_instance_profile   = aws_iam_instance_profile.wordpress_ssm.name
-
-  # Sem IP público (subnet privada)
-  associate_public_ip_address = false
-
-  # EBS otimizado
-  ebs_optimized = true
-
-  root_block_device {
-    volume_type           = "gp3"
-    volume_size           = 20
-    delete_on_termination = true
-    encrypted             = true
-  }
-
-
-
-  tags = {
-    Name = "${var.project_name}-wordpress-basic"
-  }
-}
+# NOTA: Instância EC2 individual removida - substituída por Auto Scaling Group (Issue #7)
+# A instância WordPress agora é gerenciada pelo ASG definido em asg.tf
 
 # User data usando templatefile (método moderno)
 locals {

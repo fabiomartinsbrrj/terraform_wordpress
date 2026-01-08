@@ -95,13 +95,8 @@ resource "aws_lb_target_group" "wordpress" {
   }
 }
 
-# FASE 2.3: Target Group Attachment - Registrar instância WordPress
-# Conecta a instância WordPress ao target group do ALB
-resource "aws_lb_target_group_attachment" "wordpress" {
-  target_group_arn = aws_lb_target_group.wordpress.arn
-  target_id        = aws_instance.wordpress.id
-  port             = 80
-}
+# NOTA: Target Group Attachment removido - ASG gerencia automaticamente (Issue #7)
+# O Auto Scaling Group registra/desregistra instâncias automaticamente no target group
 
 # ==============================================================================
 # FASE 3: Listeners e Roteamento

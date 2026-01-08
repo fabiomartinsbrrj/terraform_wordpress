@@ -187,12 +187,43 @@ output "database_subnet_availability_zones" {
 }
 
 # ==============================================================================
-# EC2 Outputs
+# Auto Scaling Group Outputs - Issue #7
 # ==============================================================================
 
-output "wordpress_instance_id" {
-  description = "ID da instância EC2 do WordPress"
-  value       = aws_instance.wordpress.id
+output "asg_name" {
+  description = "Nome do Auto Scaling Group"
+  value       = aws_autoscaling_group.wordpress.name
+}
+
+output "asg_arn" {
+  description = "ARN do Auto Scaling Group"
+  value       = aws_autoscaling_group.wordpress.arn
+}
+
+output "launch_template_id" {
+  description = "ID do Launch Template"
+  value       = aws_launch_template.wordpress.id
+}
+
+output "launch_template_version" {
+  description = "Versão do Launch Template"
+  value       = aws_launch_template.wordpress.latest_version
+}
+
+output "scaling_policies_arns" {
+  description = "ARNs das políticas de scaling"
+  value = {
+    scale_up   = aws_autoscaling_policy.scale_up.arn
+    scale_down = aws_autoscaling_policy.scale_down.arn
+  }
+}
+
+output "cloudwatch_alarms" {
+  description = "Nomes dos CloudWatch Alarms"
+  value = {
+    cpu_high = aws_cloudwatch_metric_alarm.cpu_high.alarm_name
+    cpu_low  = aws_cloudwatch_metric_alarm.cpu_low.alarm_name
+  }
 }
 
 output "rds_endpoint" {
@@ -227,15 +258,8 @@ output "ssm_db_password_parameter" {
   value       = aws_ssm_parameter.db_password.name
 }
 
-output "wordpress_instance_private_ip" {
-  description = "IP privado da instância WordPress"
-  value       = aws_instance.wordpress.private_ip
-}
-
-output "wordpress_instance_arn" {
-  description = "ARN da instância WordPress"
-  value       = aws_instance.wordpress.arn
-}
+# NOTA: Outputs da instância EC2 individual removidos - substituídos por ASG (Issue #7)
+# IPs e ARNs das instâncias agora são gerenciados dinamicamente pelo Auto Scaling Group
 
 output "wordpress_security_group_id" {
   description = "ID do Security Group WordPress"
