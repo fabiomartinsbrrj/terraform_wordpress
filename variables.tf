@@ -70,3 +70,37 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+# ==============================================================================
+# Variáveis para Route 53 e DNS - Issue #15
+# ==============================================================================
+
+variable "root_domain_name" {
+  description = "Nome do domínio raiz (ex: fabiodev.com)"
+  type        = string
+  default     = "fabiodev.com"
+}
+
+variable "wordpress_subdomain" {
+  description = "Subdomínio para WordPress (ex: wordpress)"
+  type        = string
+  default     = "wordpress"
+}
+
+variable "enable_health_checks" {
+  description = "Habilitar health checks do Route 53"
+  type        = bool
+  default     = true
+}
+
+variable "ttl_default" {
+  description = "TTL padrão para registros DNS em segundos"
+  type        = number
+  default     = 300
+}
+
+variable "auto_update_nameservers" {
+  description = "Automatizar atualização de name servers do domínio registrado via Terraform"
+  type        = bool
+  default     = false
+}
