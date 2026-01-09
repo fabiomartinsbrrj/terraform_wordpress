@@ -6,7 +6,7 @@
 <!-- [MermaidChart: 14a48212-bea0-46ec-8723-509048192464] -->
 # Diagrama da Arquitetura AWS - WordPress Infrastructure
 
-Este diagrama representa todos os recursos AWS implementados no projeto Terraform WordPress, incluindo suas relações e dependências. **Agora com Route 53 DNS personalizado** para acesso profissional via `wordpress.fabiodev.com`.
+Este diagrama representa todos os recursos AWS implementados no projeto Terraform WordPress, incluindo suas relações e dependências. **Agora com EFS para compartilhamento de arquivos e Auto Scaling Group para escalabilidade automática**, além do Route 53 DNS personalizado para acesso profissional via `wordpress.fabiodev.com`.
 
 ## Diagrama Completo da Arquitetura
 
@@ -48,11 +48,29 @@ graph TB
             TG["Target Group<br/>HTTP port 80<br/>Health Checks path /"]
         end
         
-        %% Subnet Privada
+        %% Subnet Privada com Auto Scaling Group
         subgraph PrivateAZ1["📍 us-east-1a - Private"]
             PrivSub1[Private Subnet<br/>10.0.0.0/20]
-            EC2[WordPress Instance<br/>t3.micro<br/>Amazon Linux 2]
-            EC2SG[WordPress Security Group<br/>HTTP/HTTPS from ALB SG<br/>SSH/MySQL from VPC]
+            ASG[Auto Scaling Group<br/>Min: 1, Max: 3, Desired: 2<br/>Launch Template t3.micro]
+            LT[Launch Template<br/>Amazon Linux 2<br/>WordPress + EFS mount]
+            EC2SG[WordPress Security Group<br/>HTTP/HTTPS from ALB SG<br/>SSH/MySQL from VPC<br/>NFS to EFS]
+        end
+        
+        %% EFS Layer
+        subgraph EFSLayer["📁 EFS - Elastic File System"]
+            EFS["EFS File System<br/>General Purpose<br/>Provisioned 10 MiB/s<br/>Encrypted"]
+            EFSSG["EFS Security Group<br/>NFS port 2049<br/>from Private Subnets"]
+            MountTarget["Mount Target<br/>Multi-AZ<br/>us-east-1a"]
+            AccessPoint["Access Point<br/>WordPress<br/>uid/gid 33 (www-data)"]
+            BackupPolicy["Backup Policy<br/>Daily backup<br/>35 days retention"]
+        end
+        
+        %% CloudWatch Scaling
+        subgraph ScalingLayer["📊 Auto Scaling & Monitoring"]
+            CPUHigh["CPU High Alarm<br/>>70% for 4 minutes<br/>Scale Up Policy"]
+            CPULow["CPU Low Alarm<br/><30% for 4 minutes<br/>Scale Down Policy"]
+            ScaleUp["Scale Up Policy<br/>+1 instance<br/>300s cooldown"]
+            ScaleDown["Scale Down Policy<br/>-1 instance<br/>300s cooldown"]
         end
         
         %% Subnets Database
@@ -111,9 +129,10 @@ graph TB
     Route53 --> IGW
     IGW --> ALB
     
-    %% Conexões ALB
+    %% Conexões ALB e ASG
     ALB --> TG
-    TG --> EC2
+    TG --> ASG
+    ASG --> LT
     ALB -.-> ALBSG
     
     %% Conexões Networking
@@ -130,26 +149,44 @@ graph TB
     PrivRT --> PrivSub1
     
     %% Conexões Database
-    EC2 --> RDS
+    ASG --> RDS
     RDS --> DBSubnetGroup
     DBSubnetGroup --> DBSub1
     DBSubnetGroup --> DBSub2
     NACL --> DBSub1
     NACL --> DBSub2
     
+    %% Conexões EFS
+    ASG --> EFS
+    EFS --> MountTarget
+    EFS --> AccessPoint
+    EFS --> BackupPolicy
+    EFS -.-> EFSSG
+    MountTarget --> PrivSub1
+    
+    %% Conexões Auto Scaling
+    CPUHigh --> ScaleUp
+    CPULow --> ScaleDown
+    ScaleUp --> ASG
+    ScaleDown --> ASG
+    ASG --> CPUHigh
+    ASG --> CPULow
+    
     %% Conexões Security Groups
-    EC2SG --> EC2
+    EC2SG --> ASG
+    EFSSG --> EFS
     RDSSG --> RDS
     EC2SG -.-> ALBSG
+    EC2SG -.-> EFSSG
     RDSSG -.-> EC2SG
     
     %% Conexões IAM
     IAMRole --> InstanceProfile
-    InstanceProfile --> EC2
+    InstanceProfile --> LT
     RDSRole --> RDS
     
     %% Conexões SSM
-    EC2 --> SSM
+    ASG --> SSM
     IAMRole -.-> SSM
     
     %% Conexões Monitoring
@@ -175,7 +212,9 @@ graph TB
     class Route53,HostedZone,ARecord,CNAMERecord,HealthCheck1,HealthCheck2 route53
     class VPC vpc
     class PubSub1,PubSub2,NAT1,NAT2,IGW,ALB,TG public
-    class PrivSub1,EC2 private
+    class PrivSub1,ASG,LT private
+    class EFS,EFSSG,MountTarget,AccessPoint,BackupPolicy database
+    class CPUHigh,CPULow,ScaleUp,ScaleDown,ScalingLayer monitoring
     class DBSub1,DBSub2,RDS,DBSubnetGroup database
     class ALBSG,EC2SG,RDSSG,NACL security
     class IAM,IAMRole,InstanceProfile,RDSRole iam
@@ -214,11 +253,29 @@ graph TB
 - **Listener**: HTTP (porta 80) com forward para WordPress
 - **Múltiplos Acessos**: ALB direto + domínio personalizado
 
-### 🖥️ **Compute**
+### 🖥️ **Compute & Auto Scaling (Issue #7)**
 
-- **EC2 Instance**: WordPress t3.micro na subnet privada
-- **User Data**: Instalação automática WordPress + WP-CLI
-- **EBS**: Volume GP3 20GB criptografado
+- **Auto Scaling Group**: Min 1, Max 3, Desired 2 instâncias
+- **Launch Template**: AMI Amazon Linux 2, t3.micro, configuração WordPress
+- **Health Checks**: ELB + EC2 com grace period de 300s
+- **Scaling Policies**: Scale up (CPU >70%), Scale down (CPU <30%)
+- **CloudWatch Alarms**: Monitoramento CPU com períodos de 2 minutos
+- **Target Group Integration**: Registro automático no ALB
+- **Multi-AZ Distribution**: Instâncias distribuídas em múltiplas AZs
+- **User Data**: Instalação automática WordPress + WP-CLI + EFS mount
+- **EBS**: Volume GP3 20GB criptografado por instância
+
+### 📁 **Shared Storage (Issue #2)**
+
+- **EFS File System**: Sistema de arquivos compartilhado para WordPress
+- **Performance Mode**: General Purpose (baixa latência, até 7000 ops/sec)
+- **Throughput Mode**: Provisioned (10 MiB/s garantido)
+- **Encryption**: Habilitada em repouso com KMS
+- **Mount Targets**: Distribuídos em múltiplas AZs para alta disponibilidade
+- **Access Point**: Configurado para WordPress (uid/gid 33 - www-data)
+- **Backup Policy**: Backup automático diário com retenção de 35 dias
+- **Lifecycle Policy**: Transição para IA após 30 dias (otimização de custos)
+- **Security Group**: Porta 2049 (NFS) restrita às subnets privadas
 
 ### 🗄️ **Database**
 
@@ -238,69 +295,81 @@ graph TB
 - **SSM Parameter Store**: Credenciais DB criptografadas
 - **Instance Profile**: Acesso seguro aos parâmetros
 
-### 📊 **Monitoring**
+### 📊 **Monitoring & Auto Scaling**
 
-- **CloudWatch**: Métricas ALB, RDS e target health
+- **CloudWatch**: Métricas ALB, RDS, ASG e target health
+- **CPU Alarms**: High (>70%) e Low (<30%) com 2 períodos de 2 minutos
+- **Scaling Policies**: SimpleScaling com cooldown de 300s
+- **ASG Metrics**: GroupMinSize, GroupMaxSize, GroupDesiredCapacity
 - **Route 53 Health Checks**: Monitoramento DNS ativo
 - **Enhanced Monitoring**: RDS performance insights
 - **DNS Monitoring**: Status de propagação e resolução
+- **EFS Metrics**: Throughput, IOPS, storage utilization
 
 ## Fluxo de Tráfego
 
-### **🎯 Fluxo Principal (Route 53)**
+### **🎯 Fluxo Principal (Route 53 + Auto Scaling)**
 
 1. **Internet** → **Route 53 DNS** → **wordpress.fabiodev.com**
 2. **DNS Resolution** → **ALB** (subnets públicas)
-3. **ALB** → **Target Group** → **WordPress Instance** (subnet privada)
-4. **WordPress** → **RDS MySQL** (subnets database isoladas)
-5. **WordPress** → **NAT Gateway** → **Internet** (updates, APIs)
+3. **ALB** → **Target Group** → **Auto Scaling Group** (2-3 instâncias)
+4. **ASG Instances** → **EFS** (arquivos compartilhados via NFS)
+5. **ASG Instances** → **RDS MySQL** (subnets database isoladas)
+6. **ASG Instances** → **NAT Gateway** → **Internet** (updates, APIs)
+7. **CloudWatch** → **CPU Alarms** → **Scaling Policies** → **ASG**
 
 ### **🔄 Fluxo Alternativo (ALB Direto)**
 
 1. **Internet** → **Internet Gateway** → **ALB** (subnets públicas)
-2. **ALB** → **Target Group** → **WordPress Instance** (subnet privada)
+2. **ALB** → **Target Group** → **Auto Scaling Group** (instâncias healthy)
 
-### **📊 Monitoramento**
+### **📊 Monitoramento e Scaling**
 
 1. **Route 53 Health Checks** → **ALB** → **CloudWatch**
 2. **ALB Metrics** → **CloudWatch**
-3. **RDS Enhanced Monitoring** → **CloudWatch**
+3. **ASG CPU Metrics** → **CloudWatch Alarms** → **Scaling Policies**
+4. **RDS Enhanced Monitoring** → **CloudWatch**
+5. **EFS Performance Metrics** → **CloudWatch**
 
 ## Issues Implementadas
 
 - ✅ **Issue #1**: IAM Role SSM
+- ✅ **Issue #2**: EFS (Arquivos Compartilhados)
 - ✅ **Issue #3**: Security Groups  
 - ✅ **Issue #4**: RDS MySQL
 - ✅ **Issue #6**: Application Load Balancer
+- ✅ **Issue #7**: Auto Scaling Group + Launch Template
 - ✅ **Issue #15**: Route 53 DNS Personalizado
 
 ## Próximas Expansões
 
 - 🚀 **Issue #13**: HTTPS/SSL (ACM)
+- 🚀 **Issue #20**: Replicação Cross-Region para EFS
 - 🚀 **Issue #16**: AWS WAF
-- 🚀 **Issue #7**: Auto Scaling Group
-- 🚀 **Issue #2**: EFS (Arquivos Compartilhados)
-- 🚀 **Issue #5**: Launch Template
+- 🚀 **CloudWatch Dashboards**: Monitoramento avançado
+- 🚀 **ElastiCache**: Cache Redis/Memcached
 
 ## 💰 Custos Mensais Atualizados
 
 ### **Recursos Ativos**
 
-- **EC2 t3.micro**: ~$8.50/mês
+- **Auto Scaling Group**: ~$17/mês (2x t3.micro)
+- **EFS**: ~$3/mês (1GB + provisioned throughput)
 - **RDS t3.micro**: ~$15/mês
 - **ALB**: ~$16/mês
 - **NAT Gateways**: ~$45/mês (2x)
 - **Route 53 Hosted Zone**: $0.50/mês
 - **Route 53 Health Checks**: $1/mês (2x)
-- **EBS GP3 20GB**: ~$2/mês
+- **EBS GP3 20GB**: ~$4/mês (2x instâncias)
+- **CloudWatch**: ~$2/mês (detailed monitoring + alarms)
 
-### **Total Estimado**: ~$88/mês
+### **Total Estimado**: ~$103.50/mês
 
 ### **Custos Anuais**
 
 - **Domínio fabiodev.com**: $12/ano
-- **Infraestrutura**: ~$1,056/ano
-- **Total**: ~$1,068/ano
+- **Infraestrutura**: ~$1,242/ano
+- **Total**: ~$1,254/ano
 
 ## 🌐 URLs de Acesso
 
