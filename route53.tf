@@ -96,15 +96,14 @@ resource "null_resource" "update_domain_nameservers" {
 resource "aws_route53_health_check" "wordpress" {
   count = var.enable_health_checks ? 1 : 0
 
-  fqdn                            = local.wordpress_domain
-  port                            = 80
-  type                            = "HTTP"
-  resource_path                   = "/"
-  failure_threshold               = 3
-  request_interval                = 30
-  cloudwatch_alarm_region         = var.aws_region
-  cloudwatch_alarm_name           = "${var.project_name}-wordpress-health"
-  insufficient_data_health_status = "Unhealthy"
+  fqdn                    = local.wordpress_domain
+  port                    = 80
+  type                    = "HTTP"
+  resource_path           = "/"
+  failure_threshold       = 3
+  request_interval        = 30
+  cloudwatch_alarm_region = var.aws_region
+  cloudwatch_alarm_name   = "${var.project_name}-wordpress-health"
 
   tags = {
     Name        = "${var.project_name}-wordpress-health-check"
@@ -120,15 +119,14 @@ resource "aws_route53_health_check" "wordpress" {
 resource "aws_route53_health_check" "wordpress_www" {
   count = var.enable_health_checks ? 1 : 0
 
-  fqdn                            = "www.${local.wordpress_domain}"
-  port                            = 80
-  type                            = "HTTP"
-  resource_path                   = "/"
-  failure_threshold               = 3
-  request_interval                = 30
-  cloudwatch_alarm_region         = var.aws_region
-  cloudwatch_alarm_name           = "${var.project_name}-wordpress-www-health"
-  insufficient_data_health_status = "Unhealthy"
+  fqdn                    = "www.${local.wordpress_domain}"
+  port                    = 80
+  type                    = "HTTP"
+  resource_path           = "/"
+  failure_threshold       = 3
+  request_interval        = 30
+  cloudwatch_alarm_region = var.aws_region
+  cloudwatch_alarm_name   = "${var.project_name}-wordpress-www-health"
 
   tags = {
     Name        = "${var.project_name}-wordpress-www-health-check"
