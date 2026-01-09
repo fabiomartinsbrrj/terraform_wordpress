@@ -2,7 +2,7 @@
 # Autor: Terraform WordPress Project
 # Descrição: Scripts de validação para EC2, RDS, SSM e WordPress
 
-.PHONY: help validate-all validate-ssm validate-rds validate-wordpress validate-logs validate-alb validate-route53 clean
+.PHONY: help validate-all validate-ssm validate-rds validate-wordpress validate-logs validate-alb validate-route53 validate-asg clean
 
 # Variáveis
 SCRIPTS_DIR = scripts/validation
@@ -21,7 +21,7 @@ help: ## Mostra esta mensagem de ajuda
 	@echo "  make validate-rds     # Testa apenas conectividade RDS"
 	@echo ""
 
-validate-all: ## Executa todas as validações (SSM, RDS, WordPress, ALB, Route53, Logs)
+validate-all: ## Executa todas as validações (SSM, RDS, WordPress, ALB, ASG, Route53, Logs)
 	@echo "🎯 Executando todas as validações..."
 	@echo ""
 	@$(MAKE) validate-ssm
@@ -29,6 +29,8 @@ validate-all: ## Executa todas as validações (SSM, RDS, WordPress, ALB, Route5
 	@$(MAKE) validate-rds
 	@echo ""
 	@$(MAKE) validate-alb
+	@echo ""
+	@$(MAKE) validate-asg
 	@echo ""
 	@$(MAKE) validate-route53
 	@echo ""
@@ -64,6 +66,15 @@ validate-alb: ## Testa conectividade através do ALB (Issue #6)
 	fi
 	@chmod +x $(SCRIPTS_DIR)/validate_alb_access.sh
 	@$(SCRIPTS_DIR)/validate_alb_access.sh
+
+validate-asg: ## Valida Auto Scaling Group e políticas de scaling (Issue #7)
+	@echo "🔍 Validando Auto Scaling Group..."
+	@if [ ! -f $(SCRIPTS_DIR)/validate_asg_access.sh ]; then \
+		echo "❌ Script validate_asg_access.sh não encontrado!"; \
+		exit 1; \
+	fi
+	@chmod +x $(SCRIPTS_DIR)/validate_asg_access.sh
+	@$(SCRIPTS_DIR)/validate_asg_access.sh
 
 validate-route53: ## Valida configuração DNS Route 53 (Issue #15)
 	@echo "🔍 Validando Route 53 DNS..."
@@ -153,6 +164,9 @@ validate-issue-4: validate-rds ## Valida Issue #4 - RDS MySQL
 validate-issue-6: validate-alb ## Valida Issue #6 - Application Load Balancer
 	@echo "✅ Issue #6 - Application Load Balancer validada!"
 
+validate-issue-7: validate-asg ## Valida Issue #7 - Auto Scaling Group
+	@echo "✅ Issue #7 - Auto Scaling Group validada!"
+
 validate-issue-15: validate-route53 ## Valida Issue #15 - Route 53 DNS
 	@echo "✅ Issue #15 - Route 53 DNS validada!"
 
@@ -161,7 +175,7 @@ info: ## Mostra informações do projeto
 	@echo "📋 Informações do Projeto WordPress"
 	@echo "=================================="
 	@echo "Projeto: Terraform WordPress Infrastructure"
-	@echo "Issues Implementadas: #1 (SSM), #4 (RDS), #6 (ALB), #15 (Route53)"
+	@echo "Issues Implementadas: #1 (SSM), #4 (RDS), #6 (ALB), #7 (ASG), #15 (Route53)"
 	@echo "Scripts de Validação: $(shell ls -1 $(SCRIPTS_DIR)/*.sh 2>/dev/null | wc -l)"
 	@echo "Terraform Version: $(shell terraform version -json 2>/dev/null | jq -r '.terraform_version' 2>/dev/null || echo 'N/A')"
 	@echo "AWS CLI Version: $(shell aws --version 2>/dev/null || echo 'N/A')"

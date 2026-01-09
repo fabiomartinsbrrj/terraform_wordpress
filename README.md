@@ -14,20 +14,31 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 │ │   (us-east-1a)      │  │   (us-east-1b)      │  │     (us-east-1a)            │ │
 │ │                     │  │                     │  │                             │ │
 │ │ ┌─────────────────┐ │  │ ┌─────────────────┐ │  │ ┌─────────────────────────┐ │ │
-│ │ │  NAT Gateway    │ │  │ │  NAT Gateway    │ │  │ │   Instâncias WordPress  │ │ │
-│ │ │  (EIP Público)  │ │  │ │  (EIP Público)  │ │  │ │   (Session Manager)     │ │ │
-│ │ └─────────────────┘ │  │ └─────────────────┘ │  │ └─────────────────────────┘ │ │
-│ └─────────────────────┘  └─────────────────────┘  └─────────────────────────────┘ │
-│           │                        │                           │                   │
+│ │ │  NAT Gateway    │ │  │ │  NAT Gateway    │ │  │ │   Auto Scaling Group    │ │ │
+│ │ │  (EIP Público)  │ │  │ │  (EIP Público)  │ │  │ │   (2-3 Instâncias)      │ │ │
+│ │ └─────────────────┘ │  │ └─────────────────┘ │  │ │   WordPress + EFS       │ │ │
+│ └─────────────────────┘  └─────────────────────┘  │ │   (Session Manager)     │ │ │
+│           │                        │              │ └─────────────────────────┘ │ │
 │ ┌─────────────────────────────────────────────────────────────┐ │                   │
 │ │              Application Load Balancer                     │ │                   │
 │ │                    (Internet-facing)                       │ │                   │
 │ │          wordpress.fabiodev.com (Route 53 DNS)             │ │                   │
+│ │              Health Check: 200,302 (WordPress)             │ │                   │
 │ └─────────────────────────────────────────────────────────────┘ │                   │
 │           │                        │                           │                   │
 │ ┌─────────────────────┐                                       │                   │
 │ │  Internet Gateway   │←──────────────────────────────────────┘                   │
 │ └─────────────────────┘                                                           │
+│                                                                                     │
+│ ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│ │                     EFS - Elastic File System                              │   │
+│ │                   Compartilhamento de Arquivos                             │   │
+│ │                                                                             │   │
+│ │ ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐ │   │
+│ │ │   Mount Target  │  │  Access Point   │  │      Backup Automático      │ │   │
+│ │ │   (Multi-AZ)    │  │   WordPress     │  │      (35 dias)              │ │   │
+│ │ └─────────────────┘  └─────────────────┘  └─────────────────────────────┘ │   │
+│ └─────────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                     │
 │ ┌─────────────────────────────────────────────────────────────────────────────┐   │
 │ │                        Subnet Database (Isolada)                           │   │
@@ -46,6 +57,15 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 │ │ │   CNAME: www.wordpress.fabiodev.com                                 │   │   │
 │ │ │   Health Checks: Monitoramento ativo                               │   │   │
 │ │ └─────────────────────────────────────────────────────────────────────┘   │   │
+│ └─────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                     │
+│ ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│ │                      CloudWatch Alarms & Scaling                           │   │
+│ │                                                                             │   │
+│ │ ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐ │   │
+│ │ │   CPU High      │  │   CPU Low       │  │    Scaling Policies         │ │   │
+│ │ │   (>70%)        │  │   (<30%)        │  │    (+1/-1 instância)        │ │   │
+│ │ └─────────────────┘  └─────────────────┘  └─────────────────────────────┘ │   │
 │ └─────────────────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -84,14 +104,29 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 - **Propagação Global**: DNS funcionando em servidores públicos (Google, Cloudflare, OpenDNS)
 - **Custo**: $0.50/mês (hosted zone) + $1/mês (health checks)
 
-### ✅ WordPress EC2 (Concluída)
+### ✅ EFS - Elastic File System (Concluída) - Issue #2
 
-- **Instância EC2**: WordPress na subnet privada com Session Manager
-- **Security Group**: Regras HTTP/HTTPS apenas do ALB, SSH/MySQL da VPC
-- **IAM Role**: Acesso ao SSM Parameter Store e Session Manager
-- **User Data**: Instalação automática do WordPress com WP-CLI
-- **EBS**: Volume GP3 20GB criptografado
-- **Acesso**: Apenas via ALB (não diretamente da internet)
+- **EFS File System**: Sistema de arquivos compartilhado para WordPress
+- **Performance Mode**: General Purpose (baixa latência, até 7000 ops/sec)
+- **Throughput Mode**: Provisioned (10 MiB/s garantido)
+- **Encryption**: Habilitada em repouso com KMS
+- **Mount Targets**: Distribuídos em múltiplas AZs para alta disponibilidade
+- **Access Point**: Configurado para WordPress (uid/gid 33 - www-data)
+- **Backup Policy**: Backup automático diário com retenção de 35 dias
+- **Lifecycle Policy**: Transição para IA após 30 dias (otimização de custos)
+- **Security Group**: Porta 2049 (NFS) restrita às subnets privadas
+
+### ✅ Auto Scaling Group (Concluída) - Issue #7
+
+- **Launch Template**: AMI Amazon Linux 2, t3.micro, configuração WordPress
+- **ASG Configuration**: Min 1, Max 3, Desired 2 instâncias
+- **Health Checks**: ELB + EC2 com grace period de 300s
+- **Scaling Policies**: Scale up (CPU >70%), Scale down (CPU <30%)
+- **CloudWatch Alarms**: Monitoramento CPU com períodos de 2 minutos
+- **Target Group Integration**: Registro automático no ALB
+- **Multi-AZ Distribution**: Instâncias distribuídas em múltiplas AZs
+- **Termination Policy**: OldestInstance para rolling updates
+- **Detailed Monitoring**: Métricas CloudWatch em 1 minuto
 
 ### ✅ RDS MySQL (Concluída)
 
@@ -112,12 +147,12 @@ Este projeto implementa uma infraestrutura completa na AWS para hospedar WordPre
 ### 🔧 Recursos Planejados (Issues GitHub)
 
 - ~~**IAM Role SSM**: Para acesso seguro via Session Manager~~ ✅ **Concluído (Issue #1)**
-- **EFS**: Sistema de arquivos compartilhado ([Issue #2](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/2))
+- ~~**EFS**: Sistema de arquivos compartilhado~~ ✅ **Concluído (Issue #2)**
 - ~~**Security Groups**: Controle de tráfego~~ ✅ **Concluído (Issue #3)**
 - ~~**RDS MySQL**: Banco de dados WordPress~~ ✅ **Concluído (Issue #4)**
-- **Launch Template**: Configuração das instâncias ([Issue #5](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/5))
+- ~~**Launch Template**: Configuração das instâncias~~ ✅ **Concluído (Issue #7)**
 - ~~**Application Load Balancer**: Distribuição de carga~~ ✅ **Concluído (Issue #6)**
-- **Auto Scaling Group**: Escalabilidade automática ([Issue #7](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/7))
+- ~~**Auto Scaling Group**: Escalabilidade automática~~ ✅ **Concluído (Issue #7)**
 - **HTTPS/SSL**: Certificado SSL para ALB ([Issue #13](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/13))
 - ~~**Route 53 DNS**: Domínio personalizado~~ ✅ **Concluído (Issue #15)**
 
@@ -132,7 +167,9 @@ terraform_wordpress/
 ├── private_subnets.tf         # Subnet privada, NAT Gateways e Elastic IPs
 ├── database_subnets.tf        # Subnets de banco de dados isoladas com Network ACL
 ├── alb.tf                     # Application Load Balancer com Target Groups
-├── ec2.tf                     # Instância WordPress com Security Group
+├── asg.tf                     # Auto Scaling Group com Launch Template (Issue #7)
+├── efs.tf                     # Elastic File System compartilhado (Issue #2)
+├── ec2.tf                     # Security Groups WordPress (migrado para ASG)
 ├── iam.tf                     # IAM Roles para SSM e RDS monitoring
 ├── rds.tf                     # RDS MySQL com Security Group
 ├── ssm.tf                     # SSM Parameter Store para credenciais
@@ -264,10 +301,22 @@ Após a aplicação, você verá informações importantes como:
 - `public_route_table_association_ids`: IDs das associações públicas
 - `private_route_table_association_ids`: IDs das associações privadas
 
+### Auto Scaling Group e EFS
+
+- `asg_arn`: ARN do Auto Scaling Group
+- `asg_name`: Nome do Auto Scaling Group
+- `launch_template_id`: ID do Launch Template
+- `launch_template_version`: Versão do Launch Template
+- `scaling_policies_arns`: ARNs das políticas de scaling
+- `cloudwatch_alarms`: IDs dos alarms CloudWatch
+- `efs_file_system_id`: ID do sistema de arquivos EFS
+- `efs_dns_name`: DNS name do EFS para mount
+- `efs_access_point_id`: ID do access point WordPress
+- `efs_mount_command`: Comando para montar EFS
+- `efs_security_group_id`: ID do security group EFS
+
 ### WordPress e RDS
 
-- `wordpress_instance_id`: ID da instância EC2 WordPress
-- `wordpress_instance_private_ip`: IP privado da instância WordPress
 - `wordpress_security_group_id`: ID do Security Group WordPress
 - `rds_endpoint`: Endpoint de conexão do RDS MySQL
 - `rds_port`: Porta de conexão do RDS (3306)
@@ -503,27 +552,27 @@ make validate-issue-15 # Issue #15 - Route 53 DNS
 ### ✅ Issues Implementadas
 
 1. **[Issue #1](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/1)**: IAM Role SSM ✅
-2. **[Issue #3](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/3)**: Security Groups ✅
-3. **[Issue #4](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/4)**: RDS MySQL ✅
-4. **[Issue #6](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/6)**: Application Load Balancer ✅
-5. **[Issue #15](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/15)**: Route 53 DNS Personalizado ✅
+2. **[Issue #2](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/2)**: EFS para arquivos compartilhados ✅
+3. **[Issue #3](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/3)**: Security Groups ✅
+4. **[Issue #4](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/4)**: RDS MySQL ✅
+5. **[Issue #6](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/6)**: Application Load Balancer ✅
+6. **[Issue #7](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/7)**: Auto Scaling Group ✅
+7. **[Issue #15](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/15)**: Route 53 DNS Personalizado ✅
 
 ### 🚀 Próximas Issues
 
-1. **[Issue #2](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/2)**: EFS para arquivos compartilhados
-2. **[Issue #5](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/5)**: Launch Template
-3. **[Issue #7](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/7)**: Auto Scaling Group
-4. **[Issue #13](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/13)**: HTTPS/SSL para ALB
+1. **[Issue #13](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/13)**: HTTPS/SSL para ALB
+2. **[Issue #20](https://github.com/fabiomartinsbrrj/terraform_wordpress/issues/20)**: Replicação Cross-Region para EFS
 
 ### 🔄 Fases Futuras
 
-- **EFS** para arquivos compartilhados entre instâncias
-- **Launch Template** com WordPress pré-configurado
-- **Auto Scaling Group** para escalabilidade automática
 - **HTTPS/SSL** com certificados ACM
 - **CloudWatch** para monitoramento avançado
 - **S3** para backups e mídia
 - **CloudFront** para CDN global
+- **ElastiCache** para cache Redis/Memcached
+- **WAF** para proteção contra ataques
+- **Backup Cross-Region** para disaster recovery
 
 ## 🤝 Contribuição
 
