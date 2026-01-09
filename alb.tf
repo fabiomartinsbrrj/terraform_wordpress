@@ -85,7 +85,7 @@ resource "aws_lb_target_group" "wordpress" {
     timeout             = 5
     interval            = 30
     path                = "/"
-    matcher             = "200"
+    matcher             = "200,302" # Aceita 200 (OK) e 302 (Redirect) para WordPress setup
     port                = "traffic-port"
     protocol            = "HTTP"
   }
