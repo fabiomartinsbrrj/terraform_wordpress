@@ -95,5 +95,7 @@ locals {
     ssm_db_endpoint_parameter = aws_ssm_parameter.db_endpoint.name
     aws_region                = var.aws_region
     db_name                   = "wordpress"
+    efs_dns_name              = aws_efs_file_system.wordpress.dns_name
+    efs_access_point_id       = aws_efs_access_point.wordpress.id
   })
 }
