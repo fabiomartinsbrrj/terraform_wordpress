@@ -1,0 +1,55 @@
+name: Bug / Fix de Infraestrutura
+description: Reportar um problema em um recurso AWS existente
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use este template para reportar problemas em recursos já provisionados (ex: EFS não monta, RDS sem conexão, ASG não registra no ALB, etc.)
+
+  - type: textarea
+    id: comportamento_atual
+    attributes:
+      label: Comportamento atual
+      description: O que está acontecendo de errado?
+      placeholder: "Ex: Instâncias do ASG sobem mas não montam o EFS, causando erro 500 no WordPress."
+    validations:
+      required: true
+
+  - type: textarea
+    id: comportamento_esperado
+    attributes:
+      label: Comportamento esperado
+      description: O que deveria acontecer?
+      placeholder: "Ex: EFS deve ser montado em /var/www/html durante o boot via user_data."
+    validations:
+      required: true
+
+  - type: input
+    id: recurso_afetado
+    attributes:
+      label: Recurso AWS afetado
+      description: Qual recurso ou arquivo .tf está com problema?
+      placeholder: "Ex: aws_efs_mount_target, user_data.tpl, asg.tf..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Output
+      description: Cole aqui qualquer log relevante (CloudWatch, SSM Session, terraform output, etc.)
+      render: shell
+
+  - type: input
+    id: branch_sugerida
+    attributes:
+      label: Branch sugerida
+      description: Nome sugerido para a branch de correção
+      placeholder: "Ex: fix/efs-mount, fix/asg-health-check"
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Passos para reproduzir, ambiente afetado, ou outras informações relevantes.
