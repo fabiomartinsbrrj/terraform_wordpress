@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentação da Arquitetura
+    url: https://github.com/fabiomartinsbrrj/terraform_wordpress/blob/main/docs/aws-architecture-diagram.md
+    about: Diagrama completo da arquitetura AWS

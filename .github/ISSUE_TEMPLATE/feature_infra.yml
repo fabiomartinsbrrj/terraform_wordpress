@@ -1,0 +1,63 @@
+name: Nova Feature de Infraestrutura
+description: Propor implementação de um novo recurso AWS
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use este template para propor novos recursos de infraestrutura AWS (ex: WAF, CloudWatch, HTTPS, etc.)
+
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição
+      description: O que deve ser implementado e por quê?
+      placeholder: "Ex: Implementar AWS WAF para proteger o ALB contra ataques web e bots maliciosos."
+    validations:
+      required: true
+
+  - type: input
+    id: servico_aws
+    attributes:
+      label: Serviço AWS
+      description: Qual serviço ou recurso AWS será criado?
+      placeholder: "Ex: AWS WAF, CloudWatch, ACM, CloudFront..."
+    validations:
+      required: true
+
+  - type: input
+    id: arquivos_tf
+    attributes:
+      label: Arquivos .tf impactados
+      description: Quais arquivos Terraform serão criados ou modificados?
+      placeholder: "Ex: waf.tf, alb.tf, outputs.tf, variables.tf"
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options:
+        - high-priority
+        - medium-priority
+        - low-priority
+    validations:
+      required: true
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: Como saberemos que a implementação está completa?
+      placeholder: |
+        - [ ] Recurso criado e validado com `terraform plan`
+        - [ ] Script de validação adicionado em `scripts/validation/`
+        - [ ] Target Make adicionado no `Makefile`
+        - [ ] Outputs documentados em `outputs.tf`
+    validations:
+      required: true
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Referências, links de documentação AWS, ou dependências com outras issues.

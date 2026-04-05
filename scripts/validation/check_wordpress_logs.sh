@@ -7,12 +7,11 @@ set -e
 
 echo "📋 Verificando logs da instância WordPress..."
 
-# Obter ID da instância WordPress
-INSTANCE_ID=$(aws ec2 describe-instances \
-    --filters "Name=tag:Name,Values=*wordpress*" \
-              "Name=instance-state-name,Values=running" \
-    --query 'Reservations[0].Instances[0].InstanceId' \
-    --output text)
+# Obter ID da instância WordPress do Auto Scaling Group
+INSTANCE_ID=$(aws autoscaling describe-auto-scaling-groups \
+    --auto-scaling-group-names "cloudpro-vpc-asg" \
+    --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
+    --output text | head -1)
 
 if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
     echo "❌ Nenhuma instância WordPress encontrada em execução"
